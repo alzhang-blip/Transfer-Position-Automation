@@ -180,7 +180,7 @@ export default function TaskTable() {
                     <span
                       className={`text-xs font-medium px-2 py-1 rounded-full ${
                         task.status === 'Active'
-                          ? 'bg-emerald-900/40 text-emerald-400'
+                          ? 'bg-blue-900/40 text-blue-400'
                           : task.status === 'Pending'
                           ? 'bg-yellow-900/40 text-yellow-400'
                           : task.status === 'Complete'
