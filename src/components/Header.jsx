@@ -22,9 +22,9 @@ export default function Header() {
           <button className="text-slate-400 hover:text-white text-sm">&#9881;</button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-[10px] font-semibold">
-              SH
+              AZ
             </div>
-            <span className="text-xs text-slate-300">Sara Huh</span>
+            <span className="text-xs text-slate-300">Albert Zhang</span>
           </div>
         </div>
       </div>
