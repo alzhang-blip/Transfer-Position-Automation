@@ -3,7 +3,7 @@ import { useTaskContext } from '../context/TaskContext';
 import { validateTransfer } from '../utils/validation';
 
 export default function ValidationChecklist({ task }) {
-  const { state } = useTaskContext();
+  const { state, dispatch } = useTaskContext();
   const [manualChecks, setManualChecks] = useState({});
 
   if (!task) return null;
@@ -45,12 +45,32 @@ export default function ValidationChecklist({ task }) {
     );
   };
 
+  const handleLogToSheet = (sheet) => {
+    dispatch({
+      type: 'LOG_ENTRY', taskId: task.id,
+      message: `Logged ${task.positions.map((p) => p.symbol).join(', ')} (${task.positions.length} position${task.positions.length > 1 ? 's' : ''}) transfer to ${sheet}`,
+      sheet,
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-[var(--text-heading)] mb-3">Validation Checklist</h3>
         <div className="space-y-2">
           {preChecks.map(renderCheck)}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-medium mb-2">Log to Sheet</p>
+        <div className="flex gap-2">
+          {['MF Sheet', 'GIC Sheet', 'PM Sheet'].map((sheet) => (
+            <button key={sheet} onClick={() => handleLogToSheet(sheet)}
+              className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:border-[var(--text-faint)] transition-all">
+              {sheet}
+            </button>
+          ))}
         </div>
       </div>
     </div>

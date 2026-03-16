@@ -231,7 +231,7 @@ export default function AgentProcessingView() {
             <button onClick={() => setSidebarTab('reject')}
               className={`flex-1 px-4 py-2.5 text-xs font-medium transition-all ${
                 sidebarTab === 'reject' ? 'text-red-600 border-b-2 border-red-500 bg-red-500/5' : 'text-[var(--text-muted)] hover:text-[var(--text-body)] hover:bg-[var(--bg-surface)]'
-              }`}>Reject / Actions</button>
+              }`}>Reject</button>
           </div>
           <div ref={rejectionRef} className="flex-1 overflow-auto p-5">
             {sidebarTab === 'validation' && <ValidationChecklist task={task} />}

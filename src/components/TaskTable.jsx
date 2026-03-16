@@ -10,6 +10,7 @@ export default function TaskTable() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [agentFilter, setAgentFilter] = useState('');
   const [sortDir, setSortDir] = useState('asc');
 
   const filtered = useMemo(() => {
@@ -30,6 +31,11 @@ export default function TaskTable() {
     if (dateFrom) result = result.filter((t) => t.requestDate >= dateFrom);
     if (dateTo) result = result.filter((t) => t.requestDate <= dateTo);
     if (statusFilter) result = result.filter((t) => t.status === statusFilter);
+    if (agentFilter) {
+      if (agentFilter === '__unassigned') result = result.filter((t) => !t.assignedTo);
+      else if (agentFilter === '__system') result = result.filter((t) => t.workflow === 'auto');
+      else result = result.filter((t) => t.assignedTo === agentFilter);
+    }
 
     result.sort((a, b) =>
       sortDir === 'asc'
@@ -38,7 +44,7 @@ export default function TaskTable() {
     );
 
     return result;
-  }, [state.tasks, search, dateFrom, dateTo, statusFilter, sortDir]);
+  }, [state.tasks, search, dateFrom, dateTo, statusFilter, agentFilter, sortDir]);
 
   const handleAssign = (taskId, agentId) => {
     dispatch({ type: 'ASSIGN_TASK', taskId, agentId: agentId || null });
@@ -49,7 +55,7 @@ export default function TaskTable() {
     dispatch({ type: 'SET_VIEW', view: 'agent' });
   };
 
-  const hasFilters = search || dateFrom || dateTo || statusFilter;
+  const hasFilters = search || dateFrom || dateTo || statusFilter || agentFilter;
 
   return (
     <div className="flex flex-col h-full">
@@ -83,8 +89,16 @@ export default function TaskTable() {
           <option value="Rejected">Rejected</option>
         </select>
 
+        <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
+          className="text-xs bg-[var(--input-bg)] border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-body)] focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+          <option value="">All Agents</option>
+          <option value="__unassigned">Unassigned</option>
+          <option value="__system">System (Auto)</option>
+          {agents.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
+        </select>
+
         {hasFilters && (
-          <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setStatusFilter(''); }}
+          <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setStatusFilter(''); setAgentFilter(''); }}
             className="text-xs text-[var(--text-muted)] hover:text-[var(--text-body)] underline">Clear</button>
         )}
 
