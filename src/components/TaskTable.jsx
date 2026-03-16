@@ -22,8 +22,8 @@ export default function TaskTable() {
           t.id.toLowerCase().includes(q) ||
           t.sourceAccount.includes(q) ||
           t.destAccount.includes(q) ||
-          t.symbol.toLowerCase().includes(q) ||
-          String(t.quantity).includes(q)
+          t.positions.some((p) => p.symbol.toLowerCase().includes(q)) ||
+          t.positions.some((p) => String(p.quantity).includes(q))
       );
     }
 
@@ -53,7 +53,6 @@ export default function TaskTable() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-[#2d333b] bg-[#0d1117]">
         <div className="relative flex-1 min-w-[220px] max-w-sm">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">&#128269;</span>
@@ -107,7 +106,6 @@ export default function TaskTable() {
         <span className="text-[10px] text-slate-500 ml-auto">{filtered.length} of {state.tasks.length} tasks</span>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-[#0d1117] sticky top-0 z-10">
@@ -121,8 +119,7 @@ export default function TaskTable() {
               </th>
               <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Destination</th>
-              <th className="px-4 py-3">Symbol</th>
-              <th className="px-4 py-3 text-right">Qty</th>
+              <th className="px-4 py-3">Positions</th>
               <th className="px-4 py-3">Workflow</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Assign To</th>
@@ -132,6 +129,7 @@ export default function TaskTable() {
           <tbody className="divide-y divide-[#1e2733]">
             {filtered.map((task) => {
               const isSameLastName = task.sameLastName && !task.sameCX;
+              const posCount = task.positions.length;
 
               return (
                 <tr
@@ -162,8 +160,22 @@ export default function TaskTable() {
                     </div>
                     <div className="text-xs text-slate-500 mt-0.5">{task.destName}</div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs font-medium text-slate-300">{task.symbol}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-slate-300">{task.quantity.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    {posCount === 1 ? (
+                      <div>
+                        <span className="font-mono text-xs font-medium text-slate-300">{task.positions[0].symbol}</span>
+                        <span className="text-xs text-slate-500 ml-1.5">{task.positions[0].quantity.toLocaleString()} shares</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-xs font-medium text-slate-300">{posCount} assets</span>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {task.positions.slice(0, 3).map((p) => p.symbol).join(', ')}
+                          {posCount > 3 && ` +${posCount - 3}`}
+                        </div>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded-full ${

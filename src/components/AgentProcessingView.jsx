@@ -3,7 +3,6 @@ import { useTaskContext } from '../context/TaskContext';
 import { getAccountType, truncateAccount } from '../utils/validation';
 import { agents } from '../data/mockData';
 import ValidationChecklist from './ValidationChecklist';
-import BPSSimulation from './BPSSimulation';
 import RejectionPanel from './RejectionPanel';
 import GiftingLodPanel from './GiftingLodPanel';
 
@@ -105,7 +104,12 @@ export default function AgentProcessingView() {
                       {t.workflow === 'manual' ? 'Manual' : 'Auto'}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">{t.symbol} &middot; {t.quantity} shares</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {t.positions.length === 1
+                      ? `${t.positions[0].symbol} · ${t.positions[0].quantity} shares`
+                      : `${t.positions.length} positions`
+                    }
+                  </div>
                   <div className="text-[10px] text-slate-500 mt-0.5">
                     {getAccountType(t.sourceAccount)} &rarr; {getAccountType(t.destAccount)}
                   </div>
@@ -123,6 +127,8 @@ export default function AgentProcessingView() {
       </div>
     );
   }
+
+  const posCount = task.positions.length;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -155,34 +161,14 @@ export default function AgentProcessingView() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                {task.symbol} &middot; {task.quantity.toLocaleString()} shares
+                {posCount === 1
+                  ? `${task.positions[0].symbol} · ${task.positions[0].quantity.toLocaleString()} shares`
+                  : `${posCount} positions to transfer`
+                }
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {task.status !== 'Complete' && task.status !== 'Rejected' && (
-              <>
-                <button
-                  onClick={() => dispatch({ type: 'SET_STATUS', taskId: task.id, status: 'Pending' })}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-yellow-900/30 text-yellow-400 border border-yellow-700/50 hover:bg-yellow-900/50 transition-colors"
-                >
-                  Mark Pending
-                </button>
-                <button
-                  onClick={() => setSidebarTab('reject')}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-900/30 text-red-400 border border-red-700/50 hover:bg-red-900/50 transition-colors"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => dispatch({ type: 'COMPLETE_TASK', taskId: task.id })}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                >
-                  Approve
-                </button>
-              </>
-            )}
-          </div>
+          <div />
         </div>
       </div>
 
@@ -203,24 +189,86 @@ export default function AgentProcessingView() {
                 }`}
               >
                 <div className="font-mono font-medium text-slate-300">{t.id}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{t.symbol} &middot; {getAccountType(t.sourceAccount)} &rarr; {getAccountType(t.destAccount)}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  {t.positions.length === 1
+                    ? `${t.positions[0].symbol} · ${getAccountType(t.sourceAccount)} → ${getAccountType(t.destAccount)}`
+                    : `${t.positions.length} pos · ${getAccountType(t.sourceAccount)} → ${getAccountType(t.destAccount)}`
+                  }
+                </div>
               </button>
             ))}
           </div>
         </div>
 
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          <div className="grid grid-cols-5 gap-4">
+          {/* Account Info Cards */}
+          <div className="grid grid-cols-2 gap-4">
             <DetailCard label="Source Account" primary={truncateAccount(task.sourceAccount)} secondary={task.sourceName} badge={getAccountType(task.sourceAccount)} />
             <DetailCard label="Destination Account" primary={truncateAccount(task.destAccount)} secondary={task.destName} badge={getAccountType(task.destAccount)} alert={task.destStatus !== 'Approved' ? task.destStatus : null} />
-            <DetailCard label="Transfer Details" primary={task.symbol} secondary={`${task.quantity.toLocaleString()} shares`} />
-            <DetailCard label="Security Currency" primary={task.currency || 'CAD'} badge={task.currency === 'USD' ? 'USD' : 'CAD'} />
-            <DetailCard label="Asset Class" primary={task.assetClass} />
           </div>
 
-          <GiftingLodPanel task={task} />
+          {/* Positions Table */}
+          <div className="bg-[#0d1117] rounded-lg border border-[#2d333b] overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#2d333b] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-200">
+                Positions to Transfer
+                <span className="ml-2 text-xs font-normal text-slate-500">({posCount} {posCount === 1 ? 'asset' : 'assets'})</span>
+              </h3>
+              {posCount > 1 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-700/50 font-medium">
+                  Multi-Asset Transfer
+                </span>
+              )}
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-[#161b22]">
+                <tr className="text-left text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-4 py-2">#</th>
+                  <th className="px-4 py-2">Symbol</th>
+                  <th className="px-4 py-2">Currency</th>
+                  <th className="px-4 py-2 text-right">Quantity</th>
+                  <th className="px-4 py-2">Asset Class</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1e2733]">
+                {task.positions.map((pos, idx) => (
+                  <tr key={pos.symbol} className="hover:bg-[#1e2733]/50">
+                    <td className="px-4 py-2.5 text-xs text-slate-500">{idx + 1}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs font-medium text-slate-200">{pos.symbol}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        pos.currency === 'USD' ? 'bg-blue-900/30 text-blue-400' : 'bg-[#1e2733] text-slate-400'
+                      }`}>
+                        {pos.currency}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-300">{pos.quantity.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-400">{pos.assetClass}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <BPSSimulation task={task} />
+          {/* Action Buttons */}
+          {task.status !== 'Complete' && task.status !== 'Rejected' && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSidebarTab('reject')}
+                className="px-4 py-2 text-xs font-medium rounded-md bg-red-900/30 text-red-400 border border-red-700/50 hover:bg-red-900/50 transition-colors"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => dispatch({ type: 'COMPLETE_TASK', taskId: task.id })}
+                className="px-4 py-2 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              >
+                Approve
+              </button>
+            </div>
+          )}
+
+          <GiftingLodPanel task={task} />
         </div>
 
         <div className="w-96 border-l border-[#2d333b] bg-[#0d1117] shrink-0 flex flex-col">

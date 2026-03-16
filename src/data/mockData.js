@@ -7,7 +7,7 @@ export const agents = [
   { id: 'A6', name: 'Tom Nguyen', team: 'RESP Team' },
 ];
 
-export const teams = ['All', 'TFSA/FHSA Team', 'RSP Team', 'RESP Team']; // Phase 1: source is always TFSA; tabs filter by destination type too
+export const teams = ['All', 'TFSA/FHSA Team', 'RSP Team', 'RESP Team'];
 
 const symbolList = [
   { symbol: 'AAPL', currency: 'USD' },
@@ -29,6 +29,25 @@ const symbolList = [
 
 const randomSymbol = () => symbolList[Math.floor(Math.random() * symbolList.length)];
 
+function randomPositions(min = 1, max = 5) {
+  const count = Math.floor(Math.random() * (max - min + 1)) + min;
+  const used = new Set();
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    let s;
+    do { s = randomSymbol(); } while (used.has(s.symbol) && used.size < symbolList.length);
+    used.add(s.symbol);
+    const qty = Math.floor(Math.random() * 500) + 10;
+    positions.push({
+      symbol: s.symbol,
+      currency: s.currency,
+      quantity: qty,
+      assetClass: ['Equity', 'ETF', 'MF', 'GIC', 'Bond'][Math.floor(Math.random() * 5)],
+    });
+  }
+  return positions;
+}
+
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'David', 'Elizabeth'];
 
@@ -47,8 +66,13 @@ const randomAccount = (prefix) => {
 const statuses = ['Approved', 'Approved', 'Complete'];
 
 function makeTask(id, overrides) {
-  const qty = overrides.quantity || Math.floor(Math.random() * 500) + 10;
-  const price = overrides.price || +(Math.random() * 200 + 5).toFixed(2);
+  const positions = overrides.positions || [{
+    symbol: overrides.symbol || 'VFV.TO',
+    currency: overrides.currency || 'CAD',
+    quantity: overrides.quantity || Math.floor(Math.random() * 500) + 10,
+    assetClass: overrides.assetClass || 'ETF',
+  }];
+
   return {
     id,
     requestDate: overrides.requestDate || '2026-03-05',
@@ -57,12 +81,7 @@ function makeTask(id, overrides) {
     destAccount: overrides.destAccount || randomAccount('5'),
     destName: overrides.destName || overrides.sourceName || 'John Smith',
     destStatus: overrides.destStatus || 'Approved',
-    symbol: overrides.symbol || 'VFV.TO',
-    currency: overrides.currency || 'CAD',
-    quantity: qty,
-    amount: +(qty * price).toFixed(2),
-    price,
-    assetClass: overrides.assetClass || 'ETF',
+    positions,
     status: 'Active',
     assignedTo: null,
     sameCX: (overrides.sourceName || 'John Smith') === (overrides.destName || overrides.sourceName || 'John Smith'),
@@ -84,66 +103,60 @@ function makeTask(id, overrides) {
 }
 
 const seedTasks = [
-  // 1. TFSA → TFSA (same CX, clean — should auto-complete)
   makeTask('TRF-0001', {
     sourceAccount: '51234567',
     sourceName: 'James Wilson',
     destAccount: '59876543',
     destName: 'James Wilson',
-    symbol: 'VFV.TO',
-    quantity: 200,
-    price: 112.45,
-    assetClass: 'ETF',
+    positions: [
+      { symbol: 'VFV.TO', currency: 'CAD', quantity: 200, assetClass: 'ETF' },
+      { symbol: 'XIU.TO', currency: 'CAD', quantity: 100, assetClass: 'ETF' },
+    ],
   }),
-  // 2. TFSA → FHSA (same CX)
   makeTask('TRF-0002', {
     sourceAccount: '52345678',
     sourceName: 'Patricia Davis',
     destAccount: '81234567',
     destName: 'Patricia Davis',
-    symbol: 'XIU.TO',
-    quantity: 150,
-    price: 34.80,
-    assetClass: 'ETF',
+    positions: [
+      { symbol: 'XIU.TO', currency: 'CAD', quantity: 150, assetClass: 'ETF' },
+    ],
   }),
-  // 3. TFSA → RRSP (same CX, USD security)
   makeTask('TRF-0003', {
     sourceAccount: '53456789',
     sourceName: 'Michael Brown',
     destAccount: '71234567',
     destName: 'Michael Brown',
-    symbol: 'AAPL',
-    currency: 'USD',
-    quantity: 100,
-    price: 198.50,
-    assetClass: 'Equity',
+    positions: [
+      { symbol: 'AAPL', currency: 'USD', quantity: 100, assetClass: 'Equity' },
+      { symbol: 'MSFT', currency: 'USD', quantity: 50, assetClass: 'Equity' },
+      { symbol: 'VFV.TO', currency: 'CAD', quantity: 300, assetClass: 'ETF' },
+    ],
   }),
-  // 4. TFSA → Individual Margin (same CX, linked margin triggers manual, USD security)
   makeTask('TRF-0004', {
     sourceAccount: '54567890',
     sourceName: 'Linda Garcia',
     destAccount: '21234567',
     destName: 'Linda Garcia',
-    symbol: 'MSFT',
-    currency: 'USD',
-    quantity: 300,
-    price: 420.75,
-    assetClass: 'Equity',
+    positions: [
+      { symbol: 'MSFT', currency: 'USD', quantity: 300, assetClass: 'Equity' },
+    ],
     linkedMarginAccount: '21234567',
     mktVal: 85000,
     mgnReq: 25000,
     totalPositions: 12,
   }),
-  // 5. TFSA → Individual Cash (same CX)
   makeTask('TRF-0005', {
     sourceAccount: '55678901',
     sourceName: 'Robert Martinez',
     destAccount: '31234567',
     destName: 'Robert Martinez',
-    symbol: 'TD.TO',
-    quantity: 250,
-    price: 88.50,
-    assetClass: 'Equity',
+    positions: [
+      { symbol: 'TD.TO', currency: 'CAD', quantity: 250, assetClass: 'Equity' },
+      { symbol: 'RY.TO', currency: 'CAD', quantity: 180, assetClass: 'Equity' },
+      { symbol: 'ENB.TO', currency: 'CAD', quantity: 400, assetClass: 'Equity' },
+      { symbol: 'BNS.TO', currency: 'CAD', quantity: 120, assetClass: 'Equity' },
+    ],
   }),
 ];
 
@@ -157,10 +170,9 @@ export function generateMockTasks(count = 30) {
     const srcName = randomName();
     const destName = sameCX ? srcName : randomName();
     const sameLastName = srcName.split(' ')[1] === destName.split(' ')[1];
-    const qty = Math.floor(Math.random() * 500) + 10;
-    const price = +(Math.random() * 200 + 5).toFixed(2);
 
     const sourceAcc = randomAccount(srcPrefix);
+    const positions = randomPositions(1, 4);
 
     tasks.push({
       id: `TRF-${String(i).padStart(4, '0')}`,
@@ -170,11 +182,7 @@ export function generateMockTasks(count = 30) {
       destAccount: randomAccount(destPrefix),
       destName: destName,
       destStatus: statuses[Math.floor(Math.random() * statuses.length)],
-      ...randomSymbol(),
-      quantity: qty,
-      amount: +(qty * price).toFixed(2),
-      price,
-      assetClass: ['Equity', 'ETF', 'MF', 'GIC', 'Bond'][Math.floor(Math.random() * 5)],
+      positions,
       status: 'Active',
       assignedTo: null,
       sameCX,
@@ -200,6 +208,14 @@ export function generateMockTasks(count = 30) {
   return tasks;
 }
 
+export function positionSummary(task) {
+  if (!task.positions || task.positions.length === 0) return '';
+  if (task.positions.length === 1) {
+    return `${task.positions[0].symbol} (${task.positions[0].quantity})`;
+  }
+  return `${task.positions.length} positions`;
+}
+
 export const validationRulesMatrix = {
   TFSA_to_TFSA: { sameCX: true, lodRequired: false, notes: 'Direct transfer allowed' },
   TFSA_to_RRSP: { sameCX: true, lodRequired: false, notes: 'Contribution room check required' },
@@ -218,8 +234,6 @@ export const validationRulesMatrix = {
   Margin_to_TFSA: { sameCX: true, lodRequired: false, notes: 'Contribution room check required' },
   Margin_to_RRSP: { sameCX: true, lodRequired: false, notes: 'Contribution room check required' },
   Margin_to_FHSA: { sameCX: true, lodRequired: false, notes: 'FHSA eligibility check required' },
-
-  // Cross-client (gifting) — LOD required
   TFSA_to_TFSA_gift: { sameCX: false, lodRequired: true, notes: 'Gifting — QT LOD required' },
   TFSA_to_Margin_gift: { sameCX: false, lodRequired: true, notes: 'Gifting — QT LOD required' },
   TFSA_to_Cash_gift: { sameCX: false, lodRequired: true, notes: 'Gifting — QT LOD required' },

@@ -70,7 +70,7 @@ export default function InternalLog() {
                   <div className="flex-1">
                     <p className="text-xs text-red-300 font-medium">{task.rejectionReason}</p>
                     <p className="text-[10px] text-red-500/80 mt-1">
-                      {task.symbol} &middot; {task.quantity} shares &middot; {task.sourceName} &rarr; {task.destName}
+                      {task.positions.map((p) => p.symbol).join(', ')} &middot; {task.positions.length} {task.positions.length === 1 ? 'position' : 'positions'} &middot; {task.sourceName} &rarr; {task.destName}
                     </p>
                   </div>
                   <div className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${

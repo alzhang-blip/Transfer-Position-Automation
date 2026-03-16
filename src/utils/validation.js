@@ -44,13 +44,16 @@ export function getWithdrawalType(minWithdrawal, ytdWithdrawal) {
 const ACCEPTED_DEST_STATUSES = ['Approved', 'Complete'];
 
 export function findDuplicates(task, allTasks) {
+  const posKey = (positions) =>
+    positions.map((p) => `${p.symbol}:${p.quantity}`).sort().join('|');
+  const taskKey = posKey(task.positions);
+
   return allTasks.filter(
     (t) =>
       t.id !== task.id &&
       t.sourceAccount === task.sourceAccount &&
       t.destAccount === task.destAccount &&
-      t.symbol === task.symbol &&
-      t.quantity === task.quantity
+      posKey(t.positions) === taskKey
   );
 }
 

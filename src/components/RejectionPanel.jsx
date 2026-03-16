@@ -21,7 +21,7 @@ export default function RejectionPanel({ task }) {
     dispatch({
       type: 'LOG_ENTRY',
       taskId: task.id,
-      message: `Logged ${task.symbol} (${task.assetClass}) transfer to ${sheet}`,
+      message: `Logged ${task.positions.map((p) => p.symbol).join(', ')} (${task.positions.length} position${task.positions.length > 1 ? 's' : ''}) transfer to ${sheet}`,
       sheet,
     });
   };
