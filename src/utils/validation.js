@@ -117,8 +117,7 @@ export function validateTransfer(task, allTasks = []) {
   const srcType = getAccountType(task.sourceAccount);
   const destType = getAccountType(task.destAccount);
   const isSameCX = task.sourceName === task.destName;
-  const giftSuffix = isSameCX ? '' : '_gift';
-  const ruleKey = `${srcType}_to_${destType}${giftSuffix}`;
+  const ruleKey = `${srcType}_to_${destType}`;
   const rule = validationRulesMatrix[ruleKey];
 
   const { workflow, reasons: workflowReasons } = determineWorkflow(task, allTasks);
@@ -126,20 +125,6 @@ export function validateTransfer(task, allTasks = []) {
   const checks = [];
 
   // --- Pre-validation checks ---
-
-  checks.push({
-    id: 'source-prefix',
-    label: `Source account prefix: ${task.sourceAccount.charAt(0)} (${srcType})`,
-    passed: task.sourceAccount.startsWith('5'),
-    auto: true,
-  });
-
-  checks.push({
-    id: 'account-format',
-    label: `Account numbers standardized to 8 digits (src: ${truncateAccount(task.sourceAccount)}, dest: ${truncateAccount(task.destAccount)})`,
-    passed: truncateAccount(task.sourceAccount).length === 8 && truncateAccount(task.destAccount).length === 8,
-    auto: true,
-  });
 
   const duplicates = findDuplicates(task, allTasks);
   checks.push({
@@ -219,18 +204,11 @@ export function validateTransfer(task, allTasks = []) {
       auto: true,
     });
 
-    if (rule.lodRequired) {
-      checks.push({
-        id: 'gifting-lod',
-        label: 'Gifting LOD required — QT Letter of Direction on file',
-        passed: null,
-        auto: false,
-      });
-    }
+
   } else {
     checks.push({
       id: 'transfer-rule',
-      label: `No rule found for ${srcType} → ${destType}${giftSuffix}`,
+      label: `No rule found for ${srcType} → ${destType}`,
       passed: false,
       auto: true,
     });
