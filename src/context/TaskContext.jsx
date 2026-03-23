@@ -88,6 +88,16 @@ function taskReducer(state, action) {
         ),
       };
 
+    case 'ADD_COMMENT':
+      return {
+        ...state,
+        tasks: state.tasks.map((t) =>
+          t.id === action.taskId
+            ? { ...t, comments: [...(t.comments || []), { text: action.text, visibleToClient: action.visibleToClient, timestamp: new Date().toISOString() }] }
+            : t
+        ),
+      };
+
     case 'LOG_ENTRY':
       return {
         ...state,

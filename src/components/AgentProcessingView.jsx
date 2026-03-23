@@ -1,10 +1,8 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useTaskContext } from '../context/TaskContext';
 import { getAccountType, truncateAccount } from '../utils/validation';
-import { agents } from '../data/mockData';
+import { agents, rejectionReasons } from '../data/mockData';
 import ValidationChecklist from './ValidationChecklist';
-import RejectionPanel from './RejectionPanel';
-
 import RoutingChecks from './RoutingChecks';
 
 export default function AgentProcessingView() {
@@ -13,11 +11,11 @@ export default function AgentProcessingView() {
 
   const [agentFilter, setAgentFilter] = useState('');
   const [destFilter, setDestFilter] = useState('');
-  const [sidebarTab, setSidebarTab] = useState('validation');
-  const rejectionRef = useRef(null);
-
   const [workflowFilter, setWorkflowFilter] = useState('manual');
   const [confirmAction, setConfirmAction] = useState(null);
+  const [rejectStep, setRejectStep] = useState(null);
+  const [commentText, setCommentText] = useState('');
+  const [commentVisible, setCommentVisible] = useState(false);
 
   const activeTasks = useMemo(() => {
     return state.tasks
@@ -107,6 +105,11 @@ export default function AgentProcessingView() {
   }
 
   const posCount = task.positions.length;
+
+  const handleReject = (reason) => {
+    dispatch({ type: 'REJECT_TASK', taskId: task.id, reason });
+    setRejectStep(null);
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -204,9 +207,65 @@ export default function AgentProcessingView() {
             </table>
           </div>
 
+          {task.workflow === 'manual' && (
+            <div className="bg-[var(--bg-base)] rounded-lg border border-[var(--border)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--border)]">
+                <h3 className="text-sm font-semibold text-[var(--text-heading)]">Agent Comments</h3>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Special instructions or additional notes for this request.</p>
+              </div>
+              <div className="p-4 space-y-3">
+                {(task.comments || []).length > 0 && (
+                  <div className="space-y-2 mb-2">
+                    {(task.comments || []).map((c, i) => (
+                      <div key={i} className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-[var(--text-muted)]">{new Date(c.timestamp).toLocaleString()}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            c.visibleToClient ? 'bg-blue-500/15 text-blue-600' : 'bg-[var(--badge-bg)] text-[var(--text-muted)]'
+                          }`}>{c.visibleToClient ? 'Visible to client' : 'Internal only'}</span>
+                        </div>
+                        <p className="text-xs text-[var(--text-body)]">{c.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {task.status !== 'Complete' && task.status !== 'Rejected' && (
+                  <>
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Add a comment..."
+                      rows={2}
+                      className="w-full text-xs bg-[var(--input-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-body)] placeholder-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={commentVisible} onChange={(e) => setCommentVisible(e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-[var(--border)] text-blue-600 focus:ring-blue-500 bg-[var(--bg-base)]" />
+                        <span className="text-[11px] text-[var(--text-secondary)]">Show on customer portal</span>
+                      </label>
+                      <button
+                        onClick={() => {
+                          const trimmed = commentText.trim();
+                          if (!trimmed) return;
+                          dispatch({ type: 'ADD_COMMENT', taskId: task.id, text: trimmed, visibleToClient: commentVisible });
+                          setCommentText('');
+                          setCommentVisible(false);
+                        }}
+                        disabled={!commentText.trim()}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        Add Comment
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {task.status !== 'Complete' && task.status !== 'Rejected' && (
             <div className="flex gap-3">
-              <button onClick={() => setSidebarTab('reject')}
+              <button onClick={() => setRejectStep('select')}
                 className="px-4 py-2 text-xs font-medium rounded-md bg-red-500/10 text-red-600 border border-red-500/30 hover:bg-red-500/20 transition-colors">Reject</button>
               <button onClick={() => setConfirmAction({ type: 'approve', taskId: task.id })}
                 className="px-4 py-2 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Approve</button>
@@ -218,24 +277,108 @@ export default function AgentProcessingView() {
               onConfirm={() => { if (confirmAction.type === 'approve') dispatch({ type: 'COMPLETE_TASK', taskId: confirmAction.taskId }); setConfirmAction(null); }}
               onCancel={() => setConfirmAction(null)} />
           )}
-
-
         </div>
 
         <div className="w-96 border-l border-[var(--border)] bg-[var(--bg-base)] shrink-0 flex flex-col">
-          <div className="flex border-b border-[var(--border)] bg-[var(--bg-base)] shrink-0">
-            <button onClick={() => setSidebarTab('validation')}
-              className={`flex-1 px-4 py-2.5 text-xs font-medium transition-all ${
-                sidebarTab === 'validation' ? 'text-emerald-600 border-b-2 border-emerald-500 bg-emerald-500/5' : 'text-[var(--text-muted)] hover:text-[var(--text-body)] hover:bg-[var(--bg-surface)]'
-              }`}>Validation</button>
-            <button onClick={() => setSidebarTab('reject')}
-              className={`flex-1 px-4 py-2.5 text-xs font-medium transition-all ${
-                sidebarTab === 'reject' ? 'text-red-600 border-b-2 border-red-500 bg-red-500/5' : 'text-[var(--text-muted)] hover:text-[var(--text-body)] hover:bg-[var(--bg-surface)]'
-              }`}>Reject</button>
+          <div className="px-4 py-2.5 border-b border-[var(--border)] bg-[var(--bg-base)] shrink-0">
+            <span className="text-xs font-medium text-emerald-600">Validation</span>
           </div>
-          <div ref={rejectionRef} className="flex-1 overflow-auto p-5">
-            {sidebarTab === 'validation' && <ValidationChecklist task={task} />}
-            {sidebarTab === 'reject' && <RejectionPanel task={task} />}
+          <div className="flex-1 overflow-auto p-5">
+            <ValidationChecklist task={task} />
+          </div>
+        </div>
+      </div>
+
+      {rejectStep === 'select' && (
+        <RejectReasonModal
+          onSelect={(reason) => setRejectStep({ reason })}
+          onCancel={() => setRejectStep(null)}
+        />
+      )}
+
+      {rejectStep && rejectStep.reason && (
+        <ConfirmRejectModal
+          reason={rejectStep.reason}
+          onConfirm={() => handleReject(rejectStep.reason)}
+          onBack={() => setRejectStep('select')}
+          onCancel={() => setRejectStep(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RejectReasonModal({ onSelect, onCancel }) {
+  const [showOther, setShowOther] = useState(false);
+  const [customReason, setCustomReason] = useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg)]">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-2xl p-6 w-full max-w-md">
+        <h3 className="text-sm font-semibold text-[var(--text-heading)] mb-1">Select Rejection Reason</h3>
+        <p className="text-xs text-[var(--text-muted)] mb-4">Choose a reason for rejecting this transfer request.</p>
+
+        <div className="space-y-1.5 mb-4">
+          {rejectionReasons.map((reason) => (
+            <button key={reason} onClick={() => onSelect(reason)}
+              className="w-full text-left px-3 py-2.5 text-xs rounded-lg border border-red-500/30 text-red-600 bg-red-500/5 hover:bg-red-500/15 hover:border-red-500/40 transition-all">
+              {reason}
+            </button>
+          ))}
+
+          <button onClick={() => setShowOther((v) => !v)}
+            className={`w-full text-left px-3 py-2.5 text-xs rounded-lg border transition-all ${
+              showOther ? 'border-orange-500/40 text-orange-600 bg-orange-500/10' : 'border-red-500/30 text-red-600 bg-red-500/5 hover:bg-red-500/15 hover:border-red-500/40'
+            }`}>
+            Other...
+          </button>
+
+          {showOther && (
+            <div className="space-y-2 pt-1">
+              <textarea
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                placeholder="Enter custom rejection reason..."
+                rows={3}
+                autoFocus
+                className="w-full text-xs bg-[var(--input-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-body)] placeholder-[var(--text-muted)] focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none resize-none"
+              />
+              <button
+                onClick={() => { const t = customReason.trim(); if (t) onSelect(t); }}
+                disabled={!customReason.trim()}
+                className="w-full px-3 py-2 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                Continue with Custom Reason
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <button onClick={onCancel}
+            className="px-4 py-2 text-xs font-medium rounded-md bg-[var(--bg-base)] text-[var(--text-body)] border border-[var(--border)] hover:bg-[var(--bg-elevated)] transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmRejectModal({ reason, onConfirm, onBack, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-bg)]">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-2xl p-6 w-full max-w-sm">
+        <h3 className="text-sm font-semibold text-[var(--text-heading)] mb-2">Confirm Rejection</h3>
+        <p className="text-xs text-[var(--text-secondary)] mb-2">Are you sure you want to reject this transfer request?</p>
+        <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 mb-5">
+          <p className="text-xs text-red-600 font-medium">{reason}</p>
+        </div>
+        <div className="flex justify-between">
+          <button onClick={onBack}
+            className="px-4 py-2 text-xs font-medium rounded-md text-[var(--text-muted)] hover:text-[var(--text-body)] transition-colors">&larr; Change Reason</button>
+          <div className="flex gap-3">
+            <button onClick={onCancel}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-[var(--bg-base)] text-[var(--text-body)] border border-[var(--border)] hover:bg-[var(--bg-elevated)] transition-colors">Cancel</button>
+            <button onClick={onConfirm}
+              className="px-4 py-2 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors">Yes, Reject</button>
           </div>
         </div>
       </div>
